@@ -312,10 +312,6 @@ spec:
         - containerPort: 4567
 ```
 
-
-
-
-
 ## 3. Terraform으로 구성하기
 
 Root Dir: /d/@EDU/cloud-lv3-2023/cloud-docs/AWS가이드따라하기/yelb-master/deployments/platformdeployment/AWS/ECS/Terraform 
@@ -336,4 +332,4 @@ Root Dir: /d/@EDU/cloud-lv3-2023/cloud-docs/AWS가이드따라하기/yelb-master
    
    ```
 
-2. ECR등으로 변경하면서 실행.. 
+2. ECR 등으로 변경하면서 실행.. 
