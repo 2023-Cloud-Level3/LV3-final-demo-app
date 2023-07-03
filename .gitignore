@@ -4,7 +4,7 @@
 00_HTML/
 00_동영상/
 */.terraform/
-
+~*.*
 
 # Compiled class file
 *.class
