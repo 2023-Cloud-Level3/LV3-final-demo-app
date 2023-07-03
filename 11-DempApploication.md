@@ -13,9 +13,79 @@
 - UI Frontend, Application Server, Database Server and Caching Service using Redis.
 - GitHub: https://github.com/mreferre/yelb
 
+3가지 Case로 확인
+1. 로컬 Docker 환경에서 실행
+2. 기 구축된 쿠베네티스가 있다고 가정하고 실행
+3. terraform 코드로 쿠베네티스 클러스터부터 생성하기
 
-## 1. 쿠베네티스 환경설정
-"클라우드네이티브를 위한 쿠베네티스 2장"
+
+어플리케이션 특징
+- UI-> Angular 2 애플리케이션
+- 응용 프로그램 구성 요소는 yelb-appserver. redis-server이것은 기본적으로 캐시 서버( )와 Postgres 백엔드 데이터베이스( yelb-db) 를 읽고 쓰는 Sinatra 애플리케이션
+- 사용자가 일련의 대안(레스토랑)에 투표하고 받은 투표 수에 따라 원형 차트를 동적으로 업데이트할 수 있습니다.
+
+아키텍처
+
+![](images/11-YelbArchitecture.png)
+
+관련 도커 이미지
+
+```console
+docker pull mreferre/yelb-ui:0.10
+docker pull mreferre/yelb-appserver:0.7
+docker pull mreferre/yelb-db:0.6
+```
+
+## 1. Local에서 Docker로 실행
+
+실행 이미지는 docker hub의 이미지로 실행함
+```console
+$ cd /d/@EDU/cloud-lv3-2023/cloud-docs/AWS가이드따라하기/yelb-master/deployments/localtest 
+$ docker-compose up
+```
+
+docker-compose.yaml
+```yaml
+#use this with `docker-compose up` against a generic Docker end-point (e.g. standalone Docker)
+version: "2.1"
+services:
+  yelb-ui:
+    image: mreferre/yelb-ui:0.10
+    depends_on:
+      - yelb-appserver
+    ports:
+      - 8081:80
+    environment:
+      - UI_ENV=test # dev | test | prod 
+
+  yelb-appserver:
+    image: mreferre/yelb-appserver:0.7
+    depends_on:
+      - redis-server
+      - yelb-db
+    ports:
+      - 4567:4567
+    environment:
+      - RACK_ENV=test # development | test | production 
+
+  redis-server:
+    image: redis:4.0.2
+    ports:
+      - 6379:6379
+
+  yelb-db:
+    image: mreferre/yelb-db:0.6
+    ports:
+      - 5432:5432
+```
+
+로컬 실행 결과
+- ![](images/11-LocalExecurte.png)
+
+
+## 2.기 구축된 쿠베네티스가 있다고 가정하고 실행
+### 2.1 쿠베네티스 환경설정
+"클라우드네이티브를 위한 쿠베네티스 2장"을 참조해서 k8s cluster 구성
 
 1. 기본 환경 설정
    ```console
@@ -26,7 +96,9 @@
    - 템플릿을 지정하여 '스택'을 생성하고나 이미 생성한 스택을 삭제하면 거기에 포함된 리소스를 한번에 삭제
    - '01_base_resources_cfn.yaml'
    - Stack name: eks-work-base
-3. 
+3. Cluster 생성 
+   - 'vpc-public-subnets'은 2번의 output 확인
+
      ```console
      eksctl create cluster \
      --vpc-public-subnets    subnet-0260f84f5438d88da,subnet-08dd70d728db9f744,subnet-0ab6236f372055b43 \
@@ -39,7 +111,7 @@
      --nodes-max 5
      ```
 
-## 2. 배포 (기존에 별도 K8S가 설치 되었으면)
+### 2.2 클러스터에 Demo App 배포
 LoadBalancer Service Deployment:
 1. Deploy the application
 
@@ -55,7 +127,6 @@ LoadBalancer Service Deployment:
    deployment.apps/redis-server created
    deployment.apps/yelb-db created
    deployment.apps/yelb-appserver created
-
    ```
 
 2. Verify all pods are ready
@@ -80,16 +151,9 @@ LoadBalancer Service Deployment:
 
    - ![](images/11-SampleResult.png)
 
-## 3. Terraform으로 구성하기
 
 
-## 3. 소스 분석   
-
-### 아키텍처
-
-![](images/11-YelbArchitecture.png)
-
-### 주요 파일
+### yaml 파일
 https://raw.githubusercontent.com/lamw/vmware-k8s-app-demo/master/yelb-lb.yaml
 ```yaml
 # Minor modification from http://www.it20.info/2017/07/yelb-yet-another-sample-app/ for demo purposes
@@ -249,63 +313,10 @@ spec:
 ```
 
 
-관련 도커 이미지
 
-```console
-docker pull mreferre/yelb-ui:0.10
-docker pull mreferre/yelb-appserver:0.7
-docker pull mreferre/yelb-db:0.6
-```
 
-### 어플리케이션 특징
--  Angular 2 애플리케이션
--  응용 프로그램 구성 요소는 yelb-appserver. redis-server이것은 기본적으로 캐시 서버( )와 Postgres 백엔드 데이터베이스( yelb-db) 를 읽고 쓰는 Sinatra 애플리케이션
-- 사용자가 일련의 대안(레스토랑)에 투표하고 받은 투표 수에 따라 원형 차트를 동적으로 업데이트할 수 있습니다.
-### Local에서 Docker로 실행
 
-```console
-$ cd /d/@EDU/cloud-lv3-2023/cloud-docs/AWS가이드따라하기/yelb-master/deployments/localtest 
-$ docker-compose up
-
-```
-
-docker-compose.yaml
-```yaml
-#use this with `docker-compose up` against a generic Docker end-point (e.g. standalone Docker)
-version: "2.1"
-services:
-  yelb-ui:
-    image: mreferre/yelb-ui:0.10
-    depends_on:
-      - yelb-appserver
-    ports:
-      - 8081:80
-    environment:
-      - UI_ENV=test # dev | test | prod 
-
-  yelb-appserver:
-    image: mreferre/yelb-appserver:0.7
-    depends_on:
-      - redis-server
-      - yelb-db
-    ports:
-      - 4567:4567
-    environment:
-      - RACK_ENV=test # development | test | production 
-
-  redis-server:
-    image: redis:4.0.2
-    ports:
-      - 6379:6379
-
-  yelb-db:
-    image: mreferre/yelb-db:0.6
-    ports:
-      - 5432:5432
-```
-
-로컬 실행 결과
-- ![](images/11-LocalExecurte.png)
+## 3. Terraform으로 구성하기
 
 Root Dir: /d/@EDU/cloud-lv3-2023/cloud-docs/AWS가이드따라하기/yelb-master/deployments/platformdeployment/AWS/ECS/Terraform 
 
@@ -324,4 +335,5 @@ Root Dir: /d/@EDU/cloud-lv3-2023/cloud-docs/AWS가이드따라하기/yelb-master
    $ terraform destroy
    
    ```
- 
+
+2. ECR등으로 변경하면서 실행.. 
